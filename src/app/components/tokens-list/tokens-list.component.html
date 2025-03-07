@@ -1,0 +1,3 @@
+<ion-list *ngIf="tokens.length > 0">
+  <app-token-item *ngFor="let token of tokens" [token]="token" [totalWalletWorth]="totalWalletWorth || 0" />
+</ion-list>

@@ -1,0 +1,19 @@
+:host {
+  display: block;
+  width: 100%;
+
+  div {
+    height: 400px;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--ion-text-color);
+  }
+
+  a {
+    display: none;
+  }
+  
+}
