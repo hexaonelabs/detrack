@@ -2,7 +2,7 @@ import { CoingeckoService } from './services/coingecko/coingecko.service';
 import { TokenState } from './services/lifi/lifi.service';
 
 import { assets, chains } from 'chain-registry';
-import { bech32 } from 'bech32';
+import { encode as bech32Encode, decode as bech32Decode } from 'bech32';
 import {
   TokenMarketData,
   TokenWithBalance,
@@ -58,8 +58,8 @@ export function convertCosmosAddress(
   cosmosAddress: string,
   targetPrefix: string
 ): string {
-  const decoded = bech32.decode(cosmosAddress);
-  return bech32.encode(targetPrefix, decoded.words);
+  const decoded = bech32Decode(cosmosAddress);
+  return bech32Encode(targetPrefix, decoded.words);
 }
 
 export function getIBCPrefix(chainName: string): string | undefined {

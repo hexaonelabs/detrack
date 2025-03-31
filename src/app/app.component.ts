@@ -106,12 +106,12 @@ export class AppComponent implements OnInit {
     const ionALert = await new AlertController().create({
       header: 'Wallet Address',
       message:
-        'Please enter EVM or Cosmos Wallet Address, separated by semicolon (;)',
+        'Please enter EVM Wallet Address, separated by semicolon (;)',
       inputs: [
         {
           name: 'walletAddress',
           type: 'textarea',
-          placeholder: '0x..., cosmos...',
+          placeholder: '0x..., 0x...',
           // separate with ; and break line
           value: storedWalletsAddress.join(';\n'),
         },

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Inject, Injectable } from '@angular/core';
 import {
   BehaviorSubject,
   combineLatest,
@@ -8,6 +8,7 @@ import {
   switchMap,
   firstValueFrom,
   tap,
+  mergeMap,
 } from 'rxjs';
 import { LIFIService } from '../lifi/lifi.service';
 import { StargateService } from '../stargate/stargate.service';
@@ -51,17 +52,15 @@ export class TokenService {
 
   constructor(
     private readonly _coinsService: CoingeckoService,
-    private readonly _evmService: LIFIService,
-    private readonly _cosmosService: StargateService,
+    @Inject('EVM_SERVICE') private readonly _evmService: LIFIService,
+    // private readonly _cosmosService: StargateService,
     private readonly _solanaService: SolanaWeb3Service
   ) {
     const tokens$ = combineLatest([
       this._evmService.tokens$,
-      this._cosmosService.tokens$,
+      // this._cosmosService.tokens$,
     ]).pipe(
-      map(([evmTokens, cosmosTokens]) => {
-        return [...evmTokens, ...cosmosTokens];
-      })
+      mergeMap((arrays)=> arrays)
     );
     this.tokens$ = combineLatest([
       tokens$,
@@ -242,7 +241,7 @@ export class TokenService {
     ].filter((address: string) => isValidSvmAddress(address));
     await Promise.all([
       ...evm.map((address) => this._evmService.getWalletTokens(address)),
-      ...cosmos.map((address) => this._cosmosService.getWalletTokens(address)),
+      // ...cosmos.map((address) => this._cosmosService.getWalletTokens(address)),
       ...svn.map((address) => this._solanaService.getWalletTokens(address)),
     ]).catch(err => err);
     // const tokens = await firstValueFrom(this.tokens$);
@@ -253,7 +252,7 @@ export class TokenService {
     // get all token with `totalQuantity` > 0 from `averageCost`
     const isAllTokenSymbolLoaded = await firstValueFrom(combineLatest([
       this._evmService.isAllTokenSymbolLoaded$,
-      this._cosmosService.isAllTokenSymbolLoaded$,
+      // this._cosmosService.isAllTokenSymbolLoaded$,
     ]).pipe(
       map((loadings) => loadings.every((loading) => loading))
     ));
@@ -263,6 +262,7 @@ export class TokenService {
       return;
     }
     const tokens = await firstValueFrom(this.tokens$);
+    console.log('getTokensMarketData', tokens);
     const tokensWithTotalQuantity = tokens
       .flatMap((token) => token.tokens)
       .filter((token) => Number(token.balance) > 0);
@@ -276,7 +276,7 @@ export class TokenService {
 
   async clear() {
     this._evmService.clear();
-    this._cosmosService.clear();
+    // this._cosmosService.clear();
     this._solanaService.clear();
   }
 

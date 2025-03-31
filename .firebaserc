@@ -1,0 +1,14 @@
+{
+  "targets": {
+    "hexaonelabs": {
+      "hosting": {
+        "detrack": [
+          "detrack"
+        ]
+      }
+    }
+  },
+  "projects": {
+    "default": "hexaonelabs"
+  }
+}

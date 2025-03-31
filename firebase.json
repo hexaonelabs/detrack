@@ -1,1 +1,17 @@
-{}
+{
+  "hosting": {
+    "target": "detrack",
+    "public": "dist/detrack/browser",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

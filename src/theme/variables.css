@@ -8,3 +8,55 @@
 /* @import "@ionic/angular/css/palettes/dark.always.css"; */
 @import "@ionic/angular/css/palettes/dark.class.css";
 /* @import "@ionic/angular/css/palettes/dark.system.css"; */
+
+
+:root {
+  /* --ion-color-primary: #50d2c1;
+	--ion-color-primary-rgb: 80,210,193;
+	--ion-color-primary-contrast: #f1f1f1;
+	--ion-color-primary-contrast-rgb: 241, 241, 241;
+	--ion-color-primary-shade: #46b9aa;
+	--ion-color-primary-tint: #62d7c7; */
+
+  --ion-color-success: #50d2c1;
+	--ion-color-success-rgb: 80,210,193;
+	--ion-color-success-contrast: #f1f1f1;
+	--ion-color-success-contrast-rgb:  241, 241, 241;
+	--ion-color-success-shade: #46b9aa;
+	--ion-color-success-tint: #62d7c7;
+
+	--ion-color-danger: #c5000f;
+	--ion-color-danger-rgb: 197,0,15;
+	--ion-color-danger-contrast: #f1f1f1;
+	--ion-color-danger-contrast-rgb: 255,255,255;
+	--ion-color-danger-shade: #ad000d;
+	--ion-color-danger-tint: #cb1a27;
+
+  --ion-background-color: #ecf2fb;
+
+  --ion-card-background: #fefefe;
+  --ion-item-background: #fefefe;
+}
+
+/* This sets a different item background when dark mode is enabled on ios and md */
+.ion-palette-dark.ios,
+.ion-palette-dark.md {
+    /* --ion-item-background: #1c1c1d;
+		--ion-background-color: #f5f5f5;
+
+		--ion-card-background: #fefefe; */
+		--ion-item-background: var(--ion-card-background);
+}
+
+ion-segment-button {
+  --indicator-color: var(--ion-card-background);
+	--color-checked: var(--ion-color-primary);
+}
+
+ion-modal {
+  --background: var(--ion-card-background)!important;
+
+  ion-toolbar {
+    --background: var(--ion-card-background)!important;
+  }
+}

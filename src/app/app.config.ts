@@ -7,6 +7,9 @@ import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { getAuth, provideAuth } from '@angular/fire/auth';
 import { provideHttpClient } from '@angular/common/http';
 import { getFirestore, provideFirestore } from '@angular/fire/firestore';
+import { environment } from '../environments/environment';
+import { LIFIService } from './services/lifi/lifi.service';
+import { MockLIFIService } from './services/lifi/lifi.service.mock';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -19,5 +22,10 @@ export const appConfig: ApplicationConfig = {
     // provideAuth(() => getAuth()),
     // provideFirestore(() => getFirestore()),
     provideHttpClient(),
+    {
+      provide: 'EVM_SERVICE',
+      // useClass: environment.isProd ? LIFIService : MockLIFIService,
+      useClass: LIFIService,
+    }
   ],
 };
