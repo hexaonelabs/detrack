@@ -9,9 +9,12 @@ import {
   firstValueFrom,
   tap,
   mergeMap,
+  distinctUntilChanged,
+  filter,
+  shareReplay,
 } from 'rxjs';
 import { LIFIService } from '../lifi/lifi.service';
-import { StargateService } from '../stargate/stargate.service';
+// import { StargateService } from '../stargate/stargate.service';
 import {
   GroupedTokenWithBalance,
   GroupedTokenWithBalanceAndMarketData,
@@ -25,6 +28,7 @@ import {
 } from '../../app.utils';
 import { CoingeckoService } from '../coingecko/coingecko.service';
 import { SolanaWeb3Service } from '../solana-web3/solana-web3.service';
+import { arbitrum } from 'viem/chains';
 
 export interface PortfolioData {
   date: string;
@@ -39,7 +43,7 @@ export class TokenService {
     [] as any
   );
   public readonly marketData$ = this._marketData$.asObservable();
-
+  private readonly _rawTokens$: Observable<TokenWithBalance[]>;
   public readonly tokens$: Observable<
     (GroupedTokenWithBalanceAndMarketData & {
       averageCost?: number;
@@ -49,6 +53,12 @@ export class TokenService {
     })[]
   >;
   public readonly balanceUSD$: Observable<number>;
+  private readonly _totalBorrowsUSD$ = new BehaviorSubject<number>(0);
+  public readonly totalBorrowsUSD$ = this._totalBorrowsUSD$.asObservable();
+  private readonly _totalCollateralUSD$ = new BehaviorSubject<number>(0);
+  public readonly totalCollateralUSD$ = this._totalCollateralUSD$.asObservable();
+  private readonly _totalLiquidityDeposit$ = new BehaviorSubject<number>(0);
+  public readonly totalLiquidityDeposit$ = this._totalLiquidityDeposit$.asObservable();
 
   constructor(
     private readonly _coinsService: CoingeckoService,
@@ -56,65 +66,24 @@ export class TokenService {
     // private readonly _cosmosService: StargateService,
     private readonly _solanaService: SolanaWeb3Service
   ) {
-    const tokens$ = combineLatest([
+    this._rawTokens$ = combineLatest([
       this._evmService.tokens$,
       // this._cosmosService.tokens$,
     ]).pipe(
-      mergeMap((arrays)=> arrays)
+      mergeMap((arrays) => arrays),
+      shareReplay(1)
     );
     this.tokens$ = combineLatest([
-      tokens$,
+      this._rawTokens$,
       this._marketData$.asObservable(),
       of({} as { [key: string]: { averageCost: number; totalCost: number } }), // average cost servcie
     ]).pipe(
+      filter(([tokens]) => tokens.length > 0),
       // group token by symbol
       map(([tokens, marketData, averageCost]) => {
         const groupedTokens = tokens.reduce((acc, asset) => {
           // check existing asset symbol
-          const symbol =
-            asset.name.toLowerCase().includes('aave') &&
-            asset.name.toLowerCase() !== 'aave token' &&
-            !asset.name.toLowerCase().includes('(pos)')
-              ? asset.name
-                  .split(' ')
-                  .pop()
-                  ?.replace('wst', '')
-                  .replace('WETH', 'ETH')
-                  .replace('WAVAX', 'AVAX')
-                  .replace('USDCn', 'USDC')
-                  .replace('w', '')
-                  .replace('st', '')
-                  .replace('s', '')
-                  .replace('SAVAX', 'AVAX') ||
-                asset.symbol
-                  .replace('wst', '')
-                  .replace('WETH', 'ETH')
-                  .replace('WAVAX', 'AVAX')
-                  .replace('USDCn', 'USDC')
-                  .replace('w', '')
-                  .replace('st', '')
-                  .replace('s', '')
-                  .replace('SAVAX', 'AVAX')
-              : asset.symbol
-                  .replace('wst', '')
-                  .replace('WETH', 'ETH')
-                  .replace('WAVAX', 'AVAX')
-                  .replace('USDCn', 'USDC')
-                  .replace('w', '')
-                  .replace('st', '')
-                  .replace('s', '')
-                  .replace('SAVAX', 'AVAX');
-          // const name =
-          //   asset.name.toLowerCase().includes('aave') &&
-          //   asset.name.toLowerCase() !== 'aave token'
-          //     ? asset.name.split(' ').pop() || asset.name
-          //     : asset.name;
-
-          // calculate balanceUSD
-          // if (Number(asset.balanceUSD) <= 0) {
-          //   const totalUsd = Number(asset.priceUSD) * Number(asset.balance);
-          //   asset.balanceUSD = `${totalUsd || 0}`;
-          // }
+          const symbol = asset.symbol;
           const index = acc.findIndex((a) => a.symbol === symbol);
           if (index !== -1) {
             acc[index]?.tokens?.push(asset);
@@ -137,10 +106,13 @@ export class TokenService {
               logoURI: asset.logoURI,
               tokens: [asset],
               coingeckoId: asset.coingeckoId,
+              balance: asset.balance,
+              balanceUSD: asset.balanceUSD,
+              priceUSD: asset.priceUSD,
             });
           }
           return acc;
-        }, [] as Omit<GroupedTokenWithBalance, 'balanceUSD' | 'priceUSD' | 'balance' | 'decimals'>[]);
+        }, [] as Omit<GroupedTokenWithBalance, 'decimals'>[]);
         return {
           tokens: groupedTokens,
           marketData,
@@ -150,7 +122,7 @@ export class TokenService {
       switchMap(async ({ tokens, marketData, averageCost }) => {
         const formatedTokens = tokens.map((t) => {
           // formating sub token list before all
-          t.tokens.forEach((token) => {
+          t.tokens?.forEach((token) => {
             const tokenMarketData = marketData.find((m) =>
               t.coingeckoId
                 ? m.coingeckoId === t.coingeckoId
@@ -172,14 +144,20 @@ export class TokenService {
               ? m.coingeckoId === t.coingeckoId
               : m.symbol.toLowerCase() === t.symbol.toLowerCase()
           );
-          const balance = t.tokens
-            .reduce((acc, t) => acc + Number(t.balance), 0)
-            .toString();
-          const balanceUSD = t.tokens
-            .reduce((acc, t) => acc + Number(t.balanceUSD), 0)
-            .toString();
-          const priceUSD = tokenMarketData?.priceUSD || '0';
+          const balanceUSD =
+            t.tokens
+              ?.reduce((acc, t) => {
+                return acc + Number(t.balanceUSD);
+              }, 0)
+              .toString() || t.balanceUSD;
           const logoURI = tokenMarketData?.logoURI || t.logoURI;
+          const balance =
+            t.tokens
+              ?.reduce((acc, t) => acc + Number(t.balance), 0)
+              .toString() || t.balance;
+          const priceUSD =
+            tokenMarketData?.priceUSD || t.tokens?.[0].priceUSD || t.priceUSD;
+          // const balanceUSD = String(Number(balance) * Number(priceUSD));
           const token: GroupedTokenWithBalanceAndMarketData = {
             ...tokenMarketData,
             ...t,
@@ -211,10 +189,11 @@ export class TokenService {
       // }),
       map((tokens) =>
         tokens.sort((a, b) => Number(b.balanceUSD) - Number(a.balanceUSD))
-      )
-      // tap((tokens) => {
-      //   console.log('wallet tokens data:', tokens);
-      // })
+      ),
+      tap((tokens) => {
+        console.log('wallet tokens data:', tokens);
+      }),
+      shareReplay(1)
     );
     this.balanceUSD$ = this.tokens$.pipe(
       map((tokens) =>
@@ -229,10 +208,11 @@ export class TokenService {
   }
 
   async getWalletsTokens(walletsAddress: string[]) {
+    await this.clear();
     const accountAddresses = new Set([...walletsAddress]);
-    const evm = [
-      ...accountAddresses.values()
-    ].filter((address: string) => address.startsWith('0x')) as `0x${string}`[];
+    const evm = [...accountAddresses.values()].filter((address: string) =>
+      address.startsWith('0x')
+    ) as `0x${string}`[];
     const cosmos = [...accountAddresses.values()].filter((address) =>
       address.startsWith('cosmos')
     ) as `cosmos${string}`[];
@@ -243,19 +223,51 @@ export class TokenService {
       ...evm.map((address) => this._evmService.getWalletTokens(address)),
       // ...cosmos.map((address) => this._cosmosService.getWalletTokens(address)),
       ...svn.map((address) => this._solanaService.getWalletTokens(address)),
-    ]).catch(err => err);
-    // const tokens = await firstValueFrom(this.tokens$);
-    // console.log(`[INFO] Wallets tokens loaded:`, tokens);
+    ]).catch((err) => err);
+  }
+
+  async getLoanPositions(walletsAddress: string[]) {
+    const evm = [...walletsAddress.values()].filter((address: string) =>
+      address.startsWith('0x')
+    ) as `0x${string}`[];
+    if (!evm.length) {
+      return;
+    }
+    // get AAVE pool user reserve balance
+    const result = await this._evmService.loadUserSummary({ account: evm[0] });
+    console.log('>>>>>', result);
+
+    const { totalCollateralUSD, totalBorrowsUSD, totalLiquidityUSD } = [
+      ...result.values(),
+    ].reduce(
+      (acc, { totalCollateralUSD, totalBorrowsUSD, totalLiquidityUSD }) => {
+        acc.totalCollateralUSD += Number(totalCollateralUSD);
+        acc.totalBorrowsUSD += Number(totalBorrowsUSD);
+        acc.totalLiquidityUSD += Number(totalLiquidityUSD);
+        return acc;
+      },
+      { totalCollateralUSD: 0, totalBorrowsUSD: 0, totalLiquidityUSD: 0 }
+    );
+    this._totalBorrowsUSD$.next(totalBorrowsUSD);
+    this._totalCollateralUSD$.next(totalCollateralUSD);
+    this._totalLiquidityDeposit$.next(
+      totalLiquidityUSD
+    );
   }
 
   async getTokensMarketData() {
     // get all token with `totalQuantity` > 0 from `averageCost`
-    const isAllTokenSymbolLoaded = await firstValueFrom(combineLatest([
-      this._evmService.isAllTokenSymbolLoaded$,
-      // this._cosmosService.isAllTokenSymbolLoaded$,
-    ]).pipe(
-      map((loadings) => loadings.every((loading) => loading))
-    ));
+    const isAllTokenSymbolLoaded = await firstValueFrom(
+      combineLatest([
+        this._evmService.isAllTokenSymbolLoaded$,
+        // this._cosmosService.isAllTokenSymbolLoaded$,
+      ]).pipe(
+        tap((loadings) => {
+          console.log('isAllTokenSymbolLoaded', loadings);
+        }),
+        map((loadings) => loadings.every((loading) => loading))
+      )
+    );
     if (!isAllTokenSymbolLoaded) {
       console.log('waiting for all token symbol loaded');
       setTimeout(() => this.getTokensMarketData(), 1000);
@@ -264,7 +276,7 @@ export class TokenService {
     const tokens = await firstValueFrom(this.tokens$);
     console.log('getTokensMarketData', tokens);
     const tokensWithTotalQuantity = tokens
-      .flatMap((token) => token.tokens)
+      .flatMap((token) => token.tokens || [])
       .filter((token) => Number(token.balance) > 0);
     const marketData = await addMarketDatasFromCoingecko(
       this._coinsService,
@@ -317,7 +329,7 @@ export class TokenService {
       }),
       map((coinsData) => {
         const aggregatedData: { [date: string]: number } = {};
-        console.log('coinsData', coinsData);
+        console.log('getPortfolioHistory coinsData', coinsData);
         coinsData.forEach((coinData) => {
           coinData.forEach(({ date, value }) => {
             if (aggregatedData[date]) {

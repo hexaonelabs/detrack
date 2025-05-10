@@ -1,3 +1,19 @@
-<ion-list *ngIf="tokens.length > 0">
-  <app-token-item *ngFor="let token of tokens" [token]="token" [totalWalletWorth]="totalWalletWorth || 0" />
-</ion-list>
+<div *ngIf="tokens.length > 0">
+  <ion-card *ngFor="let token of tokens; trackBy: trackByFn">
+    <ion-accordion-group>
+      <ion-accordion [value]="token.symbol">
+        <app-token-item 
+          slot="header"
+          [token]="token" [totalWalletWorth]="totalWalletWorth || 0" />
+        <div slot="content">
+          <ion-list>
+            <app-token-item 
+            *ngFor="let tokenChain of token.tokens; trackBy: trackByFn"
+            slot="header"
+            [token]="tokenChain" />
+          </ion-list>
+        </div>
+      </ion-accordion>
+    </ion-accordion-group>
+  </ion-card>
+</div>

@@ -1,6 +1,7 @@
 <ion-app>
   <ion-content>
     <ion-grid fixed>
+      <!-- HEADER -->
       <ion-row class="ion-padding-horizontal ion-align-items-center">
         <ion-col>
           <ion-text color="primary">
@@ -25,26 +26,172 @@
           </ion-button>
         </ion-col>
       </ion-row>
+
+      <!-- INPUT WALLET ADDRESS -->
       <ion-row>
-        <ion-col *ngIf="history$ | async as data">
-          <ion-card class="ion-padding-horizontal">
-            <app-chart [data]="data" [totalWorth]="(totalWorth$ | async) || 0 "/>
+        <ion-col>
+          <ion-card class="address-card">
+            <ion-card-content>
+              <ion-grid class="ion-no-padding">
+                <ion-row class="ion-align-items-center">
+                  <ion-col>
+                    <ion-input
+                      label="EVM Address"
+                      label-placement="floating"
+                      [(ngModel)]="walletAddress"
+                      placeholder="Enter Ethereum address (0x...)"
+                    ></ion-input>
+                  </ion-col>
+                  <ion-col size="auto" class="ion-padding-start">
+                    <ion-button (click)="fetchDatas()" expand="block">
+                      <ion-icon name="search-outline" />
+                    </ion-button>
+                  </ion-col>
+                </ion-row>
+              </ion-grid>
+            </ion-card-content>
           </ion-card>
         </ion-col>
       </ion-row>
+
+      <!-- CHART -->
+      <ion-row>
+        <ion-col *ngIf="history$ | async as data">
+          <ion-card class="ion-padding-horizontal">
+            <app-chart
+              [data]="data"
+              [totalWorth]="(totalWorth$ | async) || 0"
+            />
+          </ion-card>
+        </ion-col>
+      </ion-row>
+
+      <!-- RANGE BREAKDOWN -->
+      <ion-row>
+        <ion-col size="12">
+          <ion-card>
+            <ion-grid *ngIf="totalWorthDetail$ | async as totalWorthDetail">
+              <ion-row>
+                <ion-col>
+                  <ion-chip
+                    style="
+                      --background: rgba(var(--ion-color-primary-rgb), 0.4);
+                    "
+                  >
+                    <ion-text color="light">
+                      {{
+                        totalWorthDetail.totalBorrowsUSD
+                          | currency : "USD" : "symbol" : "1.2-2"
+                      }}
+                      <small>Borrowed</small>
+                    </ion-text>
+                  </ion-chip>
+                  <ion-chip
+                    style="
+                      --background: rgba(var(--ion-color-primary-rgb), 0.6);
+                    "
+                  >
+                    <ion-text color="light">
+                      {{
+                        totalWorthDetail.totalCollateralUSD
+                          | currency : "USD" : "symbol" : "1.2-2"
+                      }}
+                      <small>Collateralized</small>
+                    </ion-text>
+                  </ion-chip>
+                  <ion-chip
+                    style="
+                      --background: rgba(var(--ion-color-primary-rgb), 0.8);
+                    "
+                  >
+                    <ion-text color="light">
+                      {{
+                        totalWorthDetail.totalLiquidityDepositUSD -
+                          totalWorthDetail.totalCollateralUSD +
+                          totalWorthDetail.walletbalanceUSD
+                          | currency : "USD" : "symbol" : "1.2-2"
+                      }}
+                      <small>Available</small>
+                    </ion-text>
+                  </ion-chip>
+                </ion-col>
+                <ion-col size="12">
+                  <ion-grid class="ion-no-padding range-breakdown">
+                    <ion-row class="ion-aligh-items-center ion-text-center">
+                      <ion-col
+                        *ngIf="(totalWorthDetail.totalBorrowPercent || 0) > 0"
+                        [style]="
+                          'display: flex;justify-content: center;align-items: anchor-center; background: rgba(var(--ion-color-primary-rgb), 0.4); height: 80px; max-width:' +
+                          totalWorthDetail.totalBorrowPercent +
+                          '%'
+                        "
+                      >
+                        <ion-text color="light"
+                          >{{
+                            totalWorthDetail.totalBorrowPercent
+                              | number : "1.2-2"
+                          }}%</ion-text
+                        ></ion-col
+                      >
+                      <ion-col
+                        *ngIf="
+                          (totalWorthDetail.totalCollateralPercent || 0) > 0
+                        "
+                        [style]="
+                          'display: flex;justify-content: center;align-items: anchor-center; background: rgba(var(--ion-color-primary-rgb), 0.6); height: 80px; max-width:' +
+                          totalWorthDetail.totalCollateralPercent +
+                          '%'
+                        "
+                      >
+                        <ion-text color="light"
+                          >{{
+                            totalWorthDetail.totalCollateralPercent
+                              | number : "1.2-2"
+                          }}%</ion-text
+                        ></ion-col
+                      >
+                      <ion-col
+                        [style]="
+                          'display: flex;justify-content: center;align-items: anchor-center; background: rgba(var(--ion-color-primary-rgb), 0.8); height: 80px; max-width:' +
+                          (100 -
+                            (+totalWorthDetail.totalCollateralPercent || 0) -
+                            (+totalWorthDetail.totalBorrowPercent || 0)) +
+                          '%'
+                        "
+                      >
+                        <ion-text color="light"
+                          >{{
+                            100 -
+                              (+totalWorthDetail.totalCollateralPercent || 0) -
+                              (+totalWorthDetail.totalBorrowPercent || 0)
+                              | number : "1.2-2"
+                          }}%</ion-text
+                        ></ion-col
+                      >
+                    </ion-row>
+                  </ion-grid>
+                </ion-col>
+              </ion-row>
+            </ion-grid>
+          </ion-card>
+        </ion-col>
+      </ion-row>
+
+      <!-- TOKENS -->
       <ion-row>
         <ion-col *ngIf="tokens$ | async as tokens">
-          <ion-card>
-            <ion-grid class="ion-padding">
+          <!-- <ion-grid class="ion-padding">
               <ion-row>
                 <ion-col>Symbol</ion-col>
                 <ion-col class="ion-text-end" size="2">24h%</ion-col>
                 <ion-col class="ion-text-end" size="2">$ Worth / Unit</ion-col>
                 <ion-col class="ion-text-end" size="2">Wallet %</ion-col>
               </ion-row>
-            </ion-grid>
-            <app-tokens-list [tokens]="tokens" [totalWalletWorth]="(totalWorth$ | async) || 0"/>
-          </ion-card>
+            </ion-grid> -->
+          <app-tokens-list
+            [tokens]="tokens"
+            [totalWalletWorth]="(totalWorth$ | async) || 0"
+          />
         </ion-col>
       </ion-row>
     </ion-grid>

@@ -7,7 +7,7 @@ import {
   getCosmosAssetInfo,
   getIBCPrefix,
 } from '../../app.utils';
-import { BehaviorSubject, map } from 'rxjs';
+import { BehaviorSubject, map, tap } from 'rxjs';
 import { Token, TokenWithBalance } from '../../interfaces/token';
 
 @Injectable({
@@ -19,6 +19,9 @@ export class StargateService {
   public readonly tokens$ = this._tokens$.asObservable();
   private readonly _totalTokenToCheck$ = new BehaviorSubject(0);
   public readonly isAllTokenSymbolLoaded$ = this._totalTokenToCheck$.asObservable().pipe(
+    tap(() => {
+      console.log('totalTokenToCheck', this._totalTokenToCheck$.value);
+    }),
     map((total) => total <= 0)
   );
 
@@ -39,8 +42,8 @@ export class StargateService {
       },
     ];
     const balances = await this.getTokenBalances(walletAddress, chains);
+    console.log('COSMOS balances', balances);
     this._tokens$.next([
-      ...this._tokens$.value,
       ...balances,
     ]);
   }
@@ -145,6 +148,7 @@ export class StargateService {
           });
         }
         // decrease totalTokenToCheck
+        // console.log('cosmos tokensWithBalance: ', tokensWithBalance); 
         this._totalTokenToCheck$.next(this._totalTokenToCheck$.value - 1);
       });
     }

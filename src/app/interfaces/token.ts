@@ -23,7 +23,7 @@ export interface TokenWithBalance extends Token {
 }
 
 export interface GroupedTokenWithBalance extends Omit<TokenWithBalance, 'address' | 'chainId' | 'decimals'> {
-  tokens: TokenWithBalance[];
+  tokens?: TokenWithBalance[];
 }
 
 export interface TokenMarketData {

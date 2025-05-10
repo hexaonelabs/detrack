@@ -1,5 +1,5 @@
 import { Component, Input, OnInit } from '@angular/core';
-import { AlertController, IonCol, IonGrid, IonItem, IonList, IonListHeader, IonRow } from '@ionic/angular/standalone';
+import { AlertController, IonAccordion, IonAccordionGroup, IonCard, IonCol, IonGrid, IonItem, IonList, IonListHeader, IonRow } from '@ionic/angular/standalone';
 import { map } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { TokenItemComponent } from '../token-item/token-item.component';
@@ -10,6 +10,9 @@ const UIElements = [
   IonCol,
   IonRow,
   IonList,
+  IonCard,
+  IonAccordion,
+  IonAccordionGroup,
 ];
 
 @Component({
@@ -22,4 +25,8 @@ const UIElements = [
 export class TokensListComponent {
   @Input() tokens!: GroupedTokenWithBalanceAndMarketData[];
   @Input() totalWalletWorth!: number;
+
+  trackByFn(index: number, item: { address?: string; symbol?: string;}): string {
+    return item.address || item.symbol || index.toString();
+  }
 }

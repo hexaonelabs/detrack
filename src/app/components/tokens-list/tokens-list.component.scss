@@ -1,0 +1,15 @@
+:host {
+  ion-card {
+    cursor: pointer;
+  }
+  ion-accordion {
+    --background: var(--ion-card-background);
+    background: var(--ion-card-background);
+
+    ion-list {
+      app-token-item {
+        border-top: solid 1px var(--ion-background-color);
+      }
+    }
+  }
+}

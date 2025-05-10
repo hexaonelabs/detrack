@@ -8,20 +8,24 @@ import {
   IonBadge,
   IonButton,
   IonCard,
+  IonCardContent,
+  IonChip,
   IonCol,
   IonContent,
   IonGrid,
   IonIcon,
+  IonInput,
   IonRow,
   IonText,
   LoadingController,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { addCircle, walletOutline } from 'ionicons/icons';
+import { addCircle, walletOutline, searchOutline } from 'ionicons/icons';
 import { TokensListComponent } from './components/tokens-list/tokens-list.component';
 import { TokenService } from './services/token/token.service';
 import { ChartComponent } from './components/chart/chart.component';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, combineLatest, firstValueFrom, map } from 'rxjs';
+import { FormsModule } from '@angular/forms';
 
 const UIElements = [
   IonApp,
@@ -30,10 +34,13 @@ const UIElements = [
   IonCol,
   IonRow,
   IonCard,
+  IonCardContent,
   IonButton,
   IonIcon,
   IonText,
   IonBadge,
+  IonInput,
+  IonChip,
 ];
 
 @Component({
@@ -42,6 +49,7 @@ const UIElements = [
   imports: [
     RouterOutlet,
     CommonModule,
+    FormsModule,
     ...UIElements,
     TokensListComponent,
     ChartComponent,
@@ -51,8 +59,12 @@ const UIElements = [
 })
 export class AppComponent implements OnInit {
   title = 'detrack';
+  public walletAddress: string | undefined;
+  public readonly totalBorrowsUSD$;
+  public readonly totalCollateralUSD$;
   public readonly tokens$;
   public readonly totalWorth$;
+  public readonly totalWorthDetail$;
   public readonly history$;
   public readonly walletAddressList$ = new BehaviorSubject<string[]>([]);
 
@@ -60,33 +72,86 @@ export class AppComponent implements OnInit {
     addIcons({
       addCircle,
       walletOutline,
+      searchOutline,
     });
     this.tokens$ = this._dataService.tokens$;
-    this.totalWorth$ = this._dataService.balanceUSD$;
+    this.totalBorrowsUSD$ = this._dataService.totalBorrowsUSD$;
+    this.totalCollateralUSD$ = this._dataService.totalCollateralUSD$;
+    this.totalWorth$ = combineLatest([
+      this._dataService.balanceUSD$,
+      this._dataService.totalLiquidityDeposit$,
+    ]).pipe(
+      map(([balanceUSD, totalLiquidityDeposit]) => {
+        return balanceUSD + totalLiquidityDeposit;
+      })
+    );
+    this.totalWorthDetail$ = combineLatest([
+      this._dataService.balanceUSD$,
+      this._dataService.totalBorrowsUSD$,
+      this._dataService.totalCollateralUSD$,
+      this._dataService.totalLiquidityDeposit$,
+    ]).pipe(
+      map(([
+        balanceUSD,
+        totalBorrowsUSD,
+        totalCollateralUSD,
+        totalLiquidityDeposit,
+      ]) => {
+        return {
+          totalWorthUSD: balanceUSD + totalLiquidityDeposit,
+          totalCollateralUSD,
+          totalBorrowsUSD,
+          totalLiquidityDepositUSD: totalLiquidityDeposit,
+          walletbalanceUSD: balanceUSD,
+          totalBorrowPercent:
+            totalBorrowsUSD
+              ? (totalBorrowsUSD / (balanceUSD + totalLiquidityDeposit)) * 100
+              : 0,
+          totalCollateralPercent: totalCollateralUSD
+            ? (totalCollateralUSD / (balanceUSD + totalLiquidityDeposit)) * 100
+            : 0,
+        };
+      })
+    );
     this.history$ = this._dataService.getPortfolioHistory$(30);
   }
 
   async ngOnInit() {
-    const storedWalletAddressListJSON = localStorage.getItem('walletsAddress');
-    const storedWalletsAddress: string[] = storedWalletAddressListJSON
-      ? JSON.parse(storedWalletAddressListJSON)
-      : [];
-    const walletsAddress =
-      storedWalletsAddress.length > 0
-        ? storedWalletsAddress
-        : await this._promptAccountList();
-    if (!walletsAddress) {
-      const ionAlert = await new AlertController().create({
-        header: 'Error',
-        message: 'Please enter at least one wallet address',
-        buttons: ['OK'],
-      });
-      await ionAlert.present();
-      await ionAlert.onDidDismiss();
-      this.ngOnInit();
+    // const storedWalletAddressListJSON = localStorage.getItem('walletsAddress');
+    // const storedWalletsAddress: string[] = storedWalletAddressListJSON
+    //   ? JSON.parse(storedWalletAddressListJSON)
+    //   : [];
+    // const walletsAddress =
+    //   storedWalletsAddress.length > 0
+    //     ? storedWalletsAddress
+    //     : await this._promptAccountList();
+    // if (!walletsAddress) {
+    //   const ionAlert = await new AlertController().create({
+    //     header: 'Error',
+    //     message: 'Please enter at least one wallet address',
+    //     buttons: ['OK'],
+    //   });
+    //   await ionAlert.present();
+    //   await ionAlert.onDidDismiss();
+    //   this.ngOnInit();
+    //   return;
+    // }
+    const address = localStorage.getItem('__detrack_wallet_address__');
+    if (!address) {
       return;
     }
-    await this._loadData(walletsAddress);
+    this.walletAddress = address;
+    await this._loadData([address]);
+  }
+
+  async fetchDatas() {
+    if (!this.walletAddress) {
+      return;
+    }
+    // save wallet address to local storage
+    localStorage.setItem('__detrack_wallet_address__', this.walletAddress);
+    // load data
+    await this._loadData([this.walletAddress]);
   }
 
   async manageAccounts() {
@@ -105,8 +170,7 @@ export class AppComponent implements OnInit {
 
     const ionALert = await new AlertController().create({
       header: 'Wallet Address',
-      message:
-        'Please enter EVM Wallet Address, separated by semicolon (;)',
+      message: 'Please enter EVM Wallet Address, separated by semicolon (;)',
       inputs: [
         {
           name: 'walletAddress',
@@ -155,6 +219,7 @@ export class AppComponent implements OnInit {
     await ionLoading.present();
     await this._dataService.clear();
     await this._dataService.getWalletsTokens(walletsAddress);
+    await this._dataService.getLoanPositions(walletsAddress);
     await this._dataService.getTokensMarketData();
     await ionLoading.dismiss();
   }

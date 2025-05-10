@@ -1,0 +1,20 @@
+:host {
+  .address-card {
+    margin-bottom: 16px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+    ion-input {
+      --border-radius: 8px;
+      --background: rgba(var(--ion-color-primary-rgb), 0.05);
+      --padding-start: 12px;
+      font-size: 16px;
+    }
+  }
+  
+
+  .range-breakdown {
+    border-radius: 11px;
+    overflow: hidden;
+  }
+}

@@ -12,6 +12,8 @@
   },
   "private": true,
   "dependencies": {
+    "@aave/contract-helpers": "^1.33.1",
+    "@aave/math-utils": "^1.33.1",
     "@angular/animations": "^18.2.0",
     "@angular/common": "^18.2.0",
     "@angular/compiler": "^18.2.0",
@@ -21,6 +23,7 @@
     "@angular/platform-browser": "^18.2.0",
     "@angular/platform-browser-dynamic": "^18.2.0",
     "@angular/router": "^18.2.0",
+    "@bgd-labs/aave-address-book": "^4.19.3",
     "@cosmjs/stargate": "^0.33.0",
     "@ionic/angular": "^8.4.3",
     "@lifi/sdk": "^3.5.4",
@@ -30,11 +33,12 @@
     "buffer": "^6.0.3",
     "chain-registry": "^1.69.142",
     "crypto-browserify": "^3.12.1",
+    "dayjs": "^1.11.13",
     "lightweight-charts": "^5.0.3",
     "rxjs": "~7.8.0",
     "stream-browserify": "^3.0.0",
     "tslib": "^2.3.0",
-    "viem": "^2.23.6",
+    "viem": "^2.29.0",
     "zone.js": "~0.14.10"
   },
   "devDependencies": {

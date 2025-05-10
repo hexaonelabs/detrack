@@ -1,10 +1,6 @@
 import { Injectable } from '@angular/core';
 import { getTokens, Token } from '@lifi/sdk';
-import {
-  BehaviorSubject,
-  map,
-  tap,
-} from 'rxjs';
+import { BehaviorSubject, map, tap } from 'rxjs';
 import {
   createPublicClient,
   formatEther,
@@ -18,6 +14,21 @@ import * as CHAINS from 'viem/chains';
 import { TokenWithBalance } from '../../interfaces/token';
 import { TxDetail } from '../../interfaces/tx';
 import { environment } from '../../../environments/environment';
+import {
+  UiPoolDataProvider,
+  UiIncentiveDataProvider,
+  ChainId,
+  ReserveDataHumanized,
+} from '@aave/contract-helpers';
+import * as markets from '@bgd-labs/aave-address-book';
+import dayjs from 'dayjs';
+import {
+  formatReserves,
+  FormatReserveUSDResponse,
+  formatUserSummary,
+  FormatUserSummaryResponse,
+} from '@aave/math-utils';
+import { providers } from 'ethers';
 
 export interface TokenState {
   totalQuantity: number;
@@ -28,28 +39,28 @@ export interface TokenState {
 
 const AVAILABLE_CHAINS = [
   CHAINS.mainnet,
-  CHAINS.bsc,
-  CHAINS.polygon,
   CHAINS.optimism,
   CHAINS.arbitrum,
-  CHAINS.avalanche,
-  CHAINS.base,
-  CHAINS.zksync,
-  CHAINS.scroll,
-  CHAINS.gnosis,
-  CHAINS.polygonZkEvm,
-  CHAINS.sei,
-  CHAINS.abstract,
-  CHAINS.metis,
-  CHAINS.blast,
-  CHAINS.linea,
-  CHAINS.fantom,
-  CHAINS.sonic,
-  CHAINS.mode,
-  CHAINS.unichain,
-  CHAINS.celo,
-  CHAINS.mantle,
-  CHAINS.berachain,
+  // CHAINS.polygon,
+  // CHAINS.bsc,
+  // CHAINS.avalanche,
+  // CHAINS.base,
+  // CHAINS.zksync,
+  // CHAINS.scroll,
+  // CHAINS.gnosis,
+  // CHAINS.polygonZkEvm,
+  // CHAINS.sei,
+  // CHAINS.abstract,
+  // CHAINS.metis,
+  // CHAINS.blast,
+  // CHAINS.linea,
+  // CHAINS.fantom,
+  // CHAINS.sonic,
+  // CHAINS.mode,
+  // CHAINS.unichain,
+  // CHAINS.celo,
+  // CHAINS.mantle,
+  // CHAINS.berachain,
 ];
 
 @Injectable({
@@ -58,12 +69,18 @@ const AVAILABLE_CHAINS = [
 export class LIFIService {
   private readonly _tokens$: BehaviorSubject<TokenWithBalance[]> =
     new BehaviorSubject([] as TokenWithBalance[]);
-  public readonly tokens$ = this._tokens$.asObservable();
-  private readonly _totalTokenToCheck$ = new BehaviorSubject(0);
-  public readonly isAllTokenSymbolLoaded$ = this._totalTokenToCheck$.asObservable().pipe(
-    tap((total) => console.log('_totalTokenToCheck:', total)),
-    map((total) => total <= 0)
+  public readonly tokens$ = this._tokens$.asObservable().pipe(
+    // remove tokens with balance < 0
+    map((tokens) => tokens.filter((t) => Number(t.balance) > 0)),
+    // remove `aToken` and `vToken` from tokens
+    map((tokens) =>
+      tokens.filter((t) => !t.symbol.startsWith('a') && !t.symbol.endsWith('v'))
+    )
   );
+  private readonly _totalTokenToCheck$ = new BehaviorSubject(0);
+  public readonly isAllTokenSymbolLoaded$ = this._totalTokenToCheck$
+    .asObservable()
+    .pipe(map((total) => total <= 0));
 
   async clear() {
     this._tokens$.next([]);
@@ -88,8 +105,51 @@ export class LIFIService {
     );
     this._totalTokenToCheck$.next(totalTokenToCheck);
     for (const chainId in chainTokens) {
-      const tokens = tokensResponse.tokens[Number(chainId)];
-      this._getAccountTokensBalance(tokens, walletAddress);
+      // check in storage for tokens stored 15 minutes ago
+      const storedTokens = localStorage.getItem(
+        `tokens-${walletAddress}-${chainId}`
+      );
+      if (storedTokens) {
+        const parsedStoredTokens = JSON.parse(storedTokens);
+        const storedDate = new Date(parsedStoredTokens.date);
+        const currentDate = new Date();
+        const diff = Math.abs(currentDate.getTime() - storedDate.getTime());
+        const diffMinutes = Math.floor(diff / (1000 * 60));
+        if (diffMinutes < 15) {
+          console.log(
+            `Tokens for chainId ${chainId} loaded from local storage.`
+          );
+          const tokens = parsedStoredTokens.tokens;
+          this._tokens$.next([...this._tokens$.value, ...tokens]);
+          this._totalTokenToCheck$.next(
+            this._totalTokenToCheck$.value - chainTokens[chainId].length
+          );
+          continue;
+        } else {
+          // remove expired tokens from local storage
+          localStorage.removeItem(`tokens-${walletAddress}-${chainId}`);  
+          console.log(
+            `Tokens for chainId ${chainId} loaded from local storage but expired.`
+          );
+        }
+      } else {
+        console.log(`Loading tokens for chainId: ${chainId}...`);      
+        const tokens = tokensResponse.tokens[Number(chainId)];
+        const accountTokensWithBalance = await this._getAccountTokensBalance(tokens, walletAddress);
+        // save tokens into local storage
+        try {
+          localStorage.setItem(
+            `tokens-${walletAddress}-${chainId}`,
+            JSON.stringify({
+              date: new Date(),
+              tokens: accountTokensWithBalance,
+            })
+          );
+        } catch (error) {
+          console.error(error);
+        }
+      }
+      console.log(`✅ Tokens loaded for chainId: ${chainId}. Rest : ${this._totalTokenToCheck$.value} tokens to check`);
     }
   }
 
@@ -148,98 +208,183 @@ export class LIFIService {
   }
 
   private async _getAccountTokensBalance(
-    chainTokens: Token[],
-    accountAddress: `0x${string}`
-  ): Promise<void> {
-    // const coinsList = await this._coinsService.getTop1000Coins();
-    try {
-      const CHAIN_ID = chainTokens[0].chainId;
-      const abi = parseAbi([
-        'function name() public view returns (string memory)',
-        'function symbol() view returns (string memory)',
-        'function decimals() view returns (uint8)',
-        'function balanceOf(address account) public view returns (uint256)',
-        'function transfer(address to, uint256 value) public returns (bool)',
-        'event Transfer(address indexed from, address indexed to, uint256 value)',
-      ]);
-      const read = createPublicClient({
-        chain: Object.values(CHAINS).find((c) => c.id === CHAIN_ID),
-        transport: http(),
-        batch: { multicall: true },
-      });
-      const allERC20 = chainTokens.filter(
-        (t) => t.address.toLowerCase() !== zeroAddress.toLowerCase()
-      );
-      // extract token include into `coinsList`
-      const erc20Tokens = allERC20;
-
-      for (const token of erc20Tokens) {
-        try {
-          const contract = getContract({
-            address: token.address as `0x${string}`,
-            abi,
-            client: { public: read },
-          });
-          contract.read
-            ?.balanceOf([accountAddress])
-            ?.then((b) => {
-              const balance = b?.toString() || '0';
-              const tokenBalance = {
-                ...token,
-                chainId: String(token.chainId),
-                // return balance as decimal string
-                balance: (Number(balance) / 10 ** token.decimals).toString(),
-                balanceUSD:
-                  ((Number(balance) / 10 ** token.decimals) *
-                    Number(token.priceUSD) || 0).toString(),
-              };
-              if (Number(tokenBalance.balance) > 0) {
-                this._tokens$.next([...this._tokens$.value, tokenBalance]);
-              }
-              // decrease totalTokenToCheck
-              this._totalTokenToCheck$.next(this._totalTokenToCheck$.value - 1);
-            })
-            .catch((error) => {
-              console.error(
-                `Error getting balance for ${token.symbol}: `
-                // error?.message
-              );
-              // decrease totalTokenToCheck
-              this._totalTokenToCheck$.next(this._totalTokenToCheck$.value - 1);
-            });
-        } catch (error) {
-          // console.error(error);
+    tokens: Token[],
+    walletAddress: `0x${string}`
+  ): Promise<TokenWithBalance[]> {
+    const chain = Object.values(CHAINS).find(
+      (c) => c.id === Number(tokens[0].chainId)
+    )!;
+    const client = createPublicClient({
+      chain,
+      transport: http(),
+    });
+    const abi = parseAbi([
+      'function name() public view returns (string memory)',
+      'function symbol() view returns (string memory)',
+      'function decimals() view returns (uint8)',
+      'function balanceOf(address account) public view returns (uint256)',
+      'function transfer(address to, uint256 value) public returns (bool)',
+      'event Transfer(address indexed from, address indexed to, uint256 value)',
+    ]);
+    const erc20Tokens = tokens.filter(
+      (t) => t.address.toLowerCase() !== zeroAddress.toLowerCase()
+    );
+    // extract token include into `coinsList`
+    const calls = erc20Tokens.map((token) => ({
+      address: token.address as `0x${string}`,
+      functionName: 'balanceOf',
+      args: [walletAddress],
+    }));
+    let results: (
+      | {
+          error: Error;
+          result?: undefined;
+          status: 'failure';
         }
-      }
-      // add zero token with corresponding balance
-      const zeroToken = chainTokens.find(
-        (t) => t.address.toLowerCase() === zeroAddress.toLowerCase()
-      );
-      if (zeroToken) {
-        read
-          .getBalance({ address: accountAddress })
-          .then((b) => (Number(b) / 10 ** zeroToken.decimals).toString())
-          .then((balance) => {
-            const zeroTokenBalance = {
-              ...zeroToken,
-              chainId: String(zeroToken.chainId),
-              balance,
-              balanceUSD: (Number(balance) * Number(zeroToken.priceUSD)).toString(),
-            };
-            this._tokens$.next([...this._tokens$.value, zeroTokenBalance]);
-            // decrease totalTokenToCheck
-            this._totalTokenToCheck$.next(this._totalTokenToCheck$.value - 1);
-          }).catch((error) => {
-            // decrease totalTokenToCheck
-            this._totalTokenToCheck$.next(this._totalTokenToCheck$.value - 1);
-          });
-      }
+      | {
+          error?: undefined;
+          result: string | number;
+          status: 'success';
+        }
+    )[] = [];
+    try {
+      results = await client.multicall({
+        contracts: calls.map((call) => ({
+          ...call,
+          abi,
+        })),
+        allowFailure: true,
+      });
     } catch (error) {
-      console.error(error);
+      console.error('Error during multicall:', error);
+      // Decrease totalTokenToCheck for all tokens in case of failure
+      this._totalTokenToCheck$.next(
+        this._totalTokenToCheck$.value - erc20Tokens.length
+      );
     }
+    // formating tokens
+    const updatedTokens = results.map((result, index) => {
+      const token = erc20Tokens[index];
+      if (!result || result.status === 'failure') {
+        // console.error(`Error getting balance for ${token.symbol}`);
+        return null;
+      }
+      const balance = result.result?.toString() || '0';
+      const tokenBalance = {
+        ...token,
+        chainId: String(token.chainId),
+        balance: (Number(balance) / 10 ** token.decimals).toString(),
+        balanceUSD: (
+          (Number(balance) / 10 ** token.decimals) *
+          Number(token.priceUSD || 0)
+        ).toString(),
+      };
+
+      return Number(tokenBalance.balance) > 0 &&
+        tokenBalance.balanceUSD !== '0'
+        ? tokenBalance
+        : null;
+    });
+    const zeroToken = tokens.find(
+      (t) => t.address.toLowerCase() === zeroAddress.toLowerCase()
+    );
+    // add call for Zero Token
+    if (zeroToken) {
+      const balance = await client
+        .getBalance({ address: walletAddress })
+        .then((b) => (Number(b) / 10 ** zeroToken.decimals).toString());
+      const zeroTokenBalance = {
+        ...zeroToken,
+        chainId: String(zeroToken.chainId),
+        balance,
+        balanceUSD: (
+          Number(balance) * Number(zeroToken.priceUSD)
+        ).toString(),
+      };
+      updatedTokens.push(zeroTokenBalance);
+    }
+    // Filter out null values and update the BehaviorSubject
+    const validTokens = updatedTokens.filter(
+      (token) => token !== null
+    ) as TokenWithBalance[];
+    this._tokens$.next([...this._tokens$.value, ...validTokens]);
+    // Update the totalTokenToCheck counter
+    this._totalTokenToCheck$.next(
+      this._totalTokenToCheck$.value - erc20Tokens.length
+    );
+    if (zeroToken) {
+      this._totalTokenToCheck$.next(this._totalTokenToCheck$.value - 1);
+    }
+    return validTokens;
   }
 
-  private async _getAAVEPoolUserReserveBalance(
-    accountAddress: `0x${string}`
-  ): Promise<void> {}
+  async loadUserSummary(ops: { account: string }) {
+    const userSummaries = new Map<
+      number,
+      FormatUserSummaryResponse<ReserveDataHumanized & FormatReserveUSDResponse>
+    >();
+    for (const chain of AVAILABLE_CHAINS) {
+      const market = [
+        markets.AaveV3Arbitrum,
+        markets.AaveV3ArbitrumSepolia,
+        markets.AaveV3Avalanche,
+        // markets.AaveV3BNB,
+        markets.AaveV3Ethereum,
+        markets.AaveV3Base,
+        markets.AaveV3BaseSepolia,
+        markets.AaveV3Polygon,
+        markets.AaveV3Gnosis,
+        markets.AaveV3Optimism,
+        markets.AaveV3Scroll,
+        markets.AaveV3Sonic,
+        markets.AaveV3ZkSync,
+      ].find((market) => market.CHAIN_ID === chain.id);
+      if (!market) {
+        continue;
+      }
+      const currentAccount = ops.account;
+      const provider = new providers.JsonRpcProvider(
+        chain.rpcUrls.default.http[0]
+      );
+      const poolDataProviderContract = new UiPoolDataProvider({
+        uiPoolDataProviderAddress: market.UI_POOL_DATA_PROVIDER,
+        provider,
+        chainId: chain.id,
+      });
+      const userReserves =
+        await poolDataProviderContract.getUserReservesHumanized({
+          lendingPoolAddressProvider: market.POOL_ADDRESSES_PROVIDER,
+          user: currentAccount,
+        });
+      const reserves = await poolDataProviderContract.getReservesHumanized({
+        lendingPoolAddressProvider: market.POOL_ADDRESSES_PROVIDER,
+      });
+      const reservesArray = reserves.reservesData;
+      const baseCurrencyData = reserves.baseCurrencyData;
+      const userReservesArray = userReserves.userReserves;
+      const currentTimestamp = dayjs().unix();
+      const formattedReserves = formatReserves({
+        reserves: reservesArray,
+        currentTimestamp,
+        marketReferenceCurrencyDecimals:
+          baseCurrencyData.marketReferenceCurrencyDecimals,
+        marketReferencePriceInUsd:
+          baseCurrencyData.marketReferenceCurrencyPriceInUsd,
+      });
+      const userSummary = formatUserSummary({
+        currentTimestamp,
+        marketReferencePriceInUsd:
+          baseCurrencyData.marketReferenceCurrencyPriceInUsd,
+        marketReferenceCurrencyDecimals:
+          baseCurrencyData.marketReferenceCurrencyDecimals,
+        userReserves: userReservesArray,
+        formattedReserves,
+        userEmodeCategoryId: userReserves.userEmodeCategoryId,
+      });
+      // add to user summaries
+      // add to user summaries
+      userSummaries.set(chain.id, { ...userSummary });
+    }
+    return userSummaries;
+  }
 }

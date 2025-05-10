@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
-import { IonAvatar, IonCol, IonGrid, IonItem, IonLabel, IonNote, IonRow } from '@ionic/angular/standalone';
-import { GroupedTokenWithBalance, GroupedTokenWithBalanceAndMarketData } from '../../interfaces/token';
+import { IonAccordion, IonAccordionGroup, IonAvatar, IonCard, IonCol, IonGrid, IonItem, IonLabel, IonNote, IonRow } from '@ionic/angular/standalone';
+import { GroupedTokenWithBalance, GroupedTokenWithBalanceAndMarketData, TokenWithBalance } from '../../interfaces/token';
 import { TotalPercentPipe } from '../../pipes/total-percent/total-percent.pipe';
 
 const UIElements = [
@@ -12,6 +12,9 @@ const UIElements = [
   IonGrid,
   IonRow,
   IonCol,
+  IonCard,
+  IonAccordion,
+  IonAccordionGroup,
 ];
 
 @Component({
@@ -22,6 +25,6 @@ const UIElements = [
   imports: [...UIElements, CommonModule, TotalPercentPipe],
 })
 export class TokenItemComponent {
-  @Input() token!: GroupedTokenWithBalanceAndMarketData;
-  @Input() totalWalletWorth!: number;
+  @Input() token!: GroupedTokenWithBalanceAndMarketData | TokenWithBalance;
+  @Input() totalWalletWorth?: number;
 }
