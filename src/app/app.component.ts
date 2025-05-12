@@ -16,6 +16,7 @@ import {
   IonIcon,
   IonInput,
   IonRow,
+  IonSpinner,
   IonText,
   LoadingController,
 } from '@ionic/angular/standalone';
@@ -41,6 +42,7 @@ const UIElements = [
   IonBadge,
   IonInput,
   IonChip,
+  IonSpinner,
 ];
 
 @Component({
@@ -67,6 +69,8 @@ export class AppComponent implements OnInit {
   public readonly totalWorthDetail$;
   public readonly history$;
   public readonly walletAddressList$ = new BehaviorSubject<string[]>([]);
+  public readonly loadingMessage$ = new BehaviorSubject<string | undefined>(undefined);
+  public readonly isLoading$ = new BehaviorSubject<boolean>(false);
 
   constructor(private readonly _dataService: TokenService) {
     addIcons({
@@ -129,6 +133,7 @@ export class AppComponent implements OnInit {
     if (!storedWalletsAddress.length) {
       return;
     }
+    this.walletAddressInput = storedWalletsAddress[0];
     await this._loadData(storedWalletsAddress);
   }
 
@@ -161,17 +166,18 @@ export class AppComponent implements OnInit {
   }
 
   private async _loadData(walletsAddress: string[]) {
+    this.isLoading$.next(true);
     // update wallet address list
     this.walletAddressList$.next(walletsAddress);
     // load wallets tokens
-    const ionLoading = await new LoadingController().create({
-      message: 'Loading...',
-    });
-    await ionLoading.present();
     await this._dataService.clear();
+    this.loadingMessage$.next('Loading Wallets tokens...');
     await this._dataService.getWalletsTokens(walletsAddress);
+    this.loadingMessage$.next('Loading Wallets Loan positions...');
     await this._dataService.getLoanPositions(walletsAddress);
+    this.loadingMessage$.next('Loading Market data...');
     await this._dataService.getTokensMarketData();
-    await ionLoading.dismiss();
+    this.isLoading$.next(false);
+    this.loadingMessage$.next(undefined);
   }
 }

@@ -78,7 +78,6 @@ export class TokenService {
       this._marketData$.asObservable(),
       of({} as { [key: string]: { averageCost: number; totalCost: number } }), // average cost servcie
     ]).pipe(
-      filter(([tokens]) => tokens.length > 0),
       // group token by symbol
       map(([tokens, marketData, averageCost]) => {
         const groupedTokens = tokens.reduce((acc, asset) => {
@@ -208,7 +207,6 @@ export class TokenService {
   }
 
   async getWalletsTokens(walletsAddress: string[]) {
-    await this.clear();
     const accountAddresses = new Set([...walletsAddress]);
     const evm = [...accountAddresses.values()].filter((address: string) =>
       address.startsWith('0x')

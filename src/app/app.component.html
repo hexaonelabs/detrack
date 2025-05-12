@@ -54,9 +54,32 @@
         </ion-col>
       </ion-row>
 
+      @if(tokens$ | async; as tokens) {
+
+      <!-- TOKEN LIST EMPTY & LOADING -->
+      @if(isLoading$.value === true) {
+      <ion-row class="loading-container">
+        <ion-col size="12" class="ion-text-center">
+          <ion-spinner name="circular" />
+          <p>{{ loadingMessage$.value || 'Fetching Wallet datas...'}}</p>
+        </ion-col>
+      </ion-row>
+      }
+
+      <!-- TOKEN LIST EMPTY & NOT LOADING -->
+      @if (tokens.length === 0 && !isLoading$.value) {
+      <ion-row class="empty-state">
+        <ion-col size="12" class="ion-text-center">
+          <h3>No Tokens Found</h3>
+          <p>Enter an EVM address to view Wallet worth.</p>
+        </ion-col>
+      </ion-row>
+      }
+
       <!-- CHART -->
+      @if(history$ | async; as data) {
       <ion-row>
-        <ion-col *ngIf="history$ | async as data">
+        <ion-col>
           <ion-card class="ion-padding-horizontal">
             <app-chart
               [data]="data"
@@ -65,8 +88,10 @@
           </ion-card>
         </ion-col>
       </ion-row>
+      }
 
       <!-- RANGE BREAKDOWN -->
+      @if(totalWorthDetail$ | async; as totalWorthDetail) {
       <ion-row>
         <ion-col size="12">
           <ion-card>
@@ -85,7 +110,7 @@
                   </ion-text>
                 </ion-col>
               </ion-row>
-              <ion-row *ngIf="totalWorthDetail$ | async as totalWorthDetail" class="ion-padding">
+              <ion-row class="ion-padding">
                 <ion-col>
                   <ion-chip
                     style="
@@ -190,24 +215,27 @@
           </ion-card>
         </ion-col>
       </ion-row>
+      }
 
-      <!-- TOKENS -->
+      <!-- TOKENS LIST -->
       <ion-row>
-        <ion-col *ngIf="tokens$ | async as tokens">
+        <ion-col>
           <!-- <ion-grid class="ion-padding">
-              <ion-row>
-                <ion-col>Symbol</ion-col>
-                <ion-col class="ion-text-end" size="2">24h%</ion-col>
-                <ion-col class="ion-text-end" size="2">$ Worth / Unit</ion-col>
-                <ion-col class="ion-text-end" size="2">Wallet %</ion-col>
-              </ion-row>
-            </ion-grid> -->
+                <ion-row>
+                  <ion-col>Symbol</ion-col>
+                  <ion-col class="ion-text-end" size="2">24h%</ion-col>
+                  <ion-col class="ion-text-end" size="2">$ Worth / Unit</ion-col>
+                  <ion-col class="ion-text-end" size="2">Wallet %</ion-col>
+                </ion-row>
+              </ion-grid> -->
           <app-tokens-list
             [tokens]="tokens"
             [totalWalletWorth]="(totalWorth$ | async) || 0"
           />
         </ion-col>
       </ion-row>
+
+      }
     </ion-grid>
   </ion-content>
 </ion-app>
