@@ -1,4 +1,15 @@
 :host {
   display: block;
   position: relative;
+
+  .network-icon {
+    position: absolute;
+    bottom: 0;
+    left: -14px;
+    width: 14px;
+    height: 14px;
+    background: var(--ion-card-background);
+    border-radius: 50%;
+    padding: 1px;
+  }
 }

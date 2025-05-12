@@ -1,5 +1,5 @@
 import { CoingeckoService } from './services/coingecko/coingecko.service';
-import { AVAILABLE_CHAINS, TokenState } from './services/lifi/lifi.service';
+import { TokenState } from './services/lifi/lifi.service';
 
 import { assets, chains } from 'chain-registry';
 import { encode as bech32Encode, decode as bech32Decode } from 'bech32';
@@ -9,6 +9,7 @@ import {
 } from './interfaces/token';
 import { TxDetail } from './interfaces/tx';
 import { PublicKey } from '@solana/web3.js';
+import { AVAILABLE_CHAINS } from './app.constantes';
 
 
 export const formatDataForChart = (

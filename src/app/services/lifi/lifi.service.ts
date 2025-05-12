@@ -29,6 +29,7 @@ import {
   FormatUserSummaryResponse,
 } from '@aave/math-utils';
 import { providers } from 'ethers';
+import { AVAILABLE_CHAINS } from '../../app.constantes';
 
 export interface TokenState {
   totalQuantity: number;
@@ -37,43 +38,7 @@ export interface TokenState {
   txs: any[];
 }
 
-export const AVAILABLE_CHAINS = [
-  {
-    ...CHAINS.mainnet,
-    chainKey: 'ethereum',
-  },
-  {
-    ...CHAINS.optimism,
-    chainKey: 'optimism',
-  },
-  {
-    ...CHAINS.arbitrum,
-    chainKey: 'arbitrum',
-  },
-  // {
-  //   ...CHAINS.polygon,
-  //   chainKey: 'polygon',
-  // },
-  // CHAINS.bsc,
-  // CHAINS.avalanche,
-  // CHAINS.base,
-  // CHAINS.zksync,
-  // CHAINS.scroll,
-  // CHAINS.gnosis,
-  // CHAINS.polygonZkEvm,
-  // CHAINS.sei,
-  // CHAINS.abstract,
-  // CHAINS.metis,
-  // CHAINS.blast,
-  // CHAINS.linea,
-  // CHAINS.fantom,
-  // CHAINS.sonic,
-  // CHAINS.mode,
-  // CHAINS.unichain,
-  // CHAINS.celo,
-  // CHAINS.mantle,
-  // CHAINS.berachain,
-];
+
 
 @Injectable()
 export class LIFIService {

@@ -3,23 +3,13 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, firstValueFrom, map } from 'rxjs';
 import { Token, TokenWithBalance } from '../../interfaces/token';
 import { createPublicClient, http, parseAbi, zeroAddress } from 'viem';
+import { AVAILABLE_CHAINS } from '../../app.constantes';
 
 @Injectable()
 export class HyperliquidService {
-  private readonly _chain = {
-    id: 999,
-    name: 'Hyperliquid',
-    rpcUrls: {
-      default: {
-        http: ['https://rpc.hyperliquid.xyz/evm'],
-      },
-    },
-    nativeCurrency: {
-      name: 'Hyperliquid',
-      symbol: 'HYPER',
-      decimals: 18,
-    },
-  };
+  private readonly _chain = AVAILABLE_CHAINS.find(
+    (chain) => chain.chainKey === 'hyperliquid'
+  )!;
   private readonly _tokens$: BehaviorSubject<TokenWithBalance[]> =
     new BehaviorSubject([] as TokenWithBalance[]);
   public readonly tokens$ = this._tokens$.asObservable().pipe(
@@ -160,7 +150,7 @@ export class HyperliquidService {
       return {
         name: token.coin,
         symbol: token.coin,
-        chainId: 'HyperCore',
+        chainId: '-999',
         address: 'token.token',
         decimals:  18 ,
         priceUSD: '-1',

@@ -61,7 +61,7 @@
       <ion-row class="loading-container">
         <ion-col size="12" class="ion-text-center">
           <ion-spinner name="circular" />
-          <p>{{ loadingMessage$.value || 'Fetching Wallet datas...'}}</p>
+          <p>{{ loadingMessage$.value || "Fetching Wallet datas..." }}</p>
         </ion-col>
       </ion-row>
       }
@@ -76,6 +76,8 @@
       </ion-row>
       }
 
+      <!-- IF TOKENS LIST IS NOT EMPTY AND IS NOT LOADING -->
+      @if (tokens.length > 0 && !isLoading$.value) {
       <!-- CHART -->
       @if(history$ | async; as data) {
       <ion-row>
@@ -221,13 +223,13 @@
       <ion-row>
         <ion-col>
           <!-- <ion-grid class="ion-padding">
-                <ion-row>
-                  <ion-col>Symbol</ion-col>
-                  <ion-col class="ion-text-end" size="2">24h%</ion-col>
-                  <ion-col class="ion-text-end" size="2">$ Worth / Unit</ion-col>
-                  <ion-col class="ion-text-end" size="2">Wallet %</ion-col>
-                </ion-row>
-              </ion-grid> -->
+                    <ion-row>
+                      <ion-col>Symbol</ion-col>
+                      <ion-col class="ion-text-end" size="2">24h%</ion-col>
+                      <ion-col class="ion-text-end" size="2">$ Worth / Unit</ion-col>
+                      <ion-col class="ion-text-end" size="2">Wallet %</ion-col>
+                    </ion-row>
+                  </ion-grid> -->
           <app-tokens-list
             [tokens]="tokens"
             [totalWalletWorth]="(totalWorth$ | async) || 0"
@@ -235,6 +237,8 @@
         </ion-col>
       </ion-row>
 
+      }
+      <!-- END TOKENS LIST -->
       }
     </ion-grid>
   </ion-content>

@@ -1,10 +1,14 @@
-<ion-grid [ngClass]="{
+<ion-grid
+  [ngClass]="{
   'ion-padding': $any(token).tokens,
   'ion-padding-horizontal': !$any(token).tokens,
-}">
+}"
+>
   <ion-row class="ion-align-items-center">
     <ion-col size="auto" class="ion-padding-vertical">
-      <ion-avatar [style]="!$any(token).tokens ? 'width: 32px; height: 32px;' : ''">
+      <ion-avatar
+        [style]="!$any(token).tokens ? 'width: 32px; height: 32px;' : ''"
+      >
         <img [src]="token.logoURI" alt="Token logo" />
       </ion-avatar>
     </ion-col>
@@ -12,29 +16,48 @@
       <ion-label>
         <h2>
           @if ($any(token).tokens) {
-            <b>{{ token.symbol }}</b>
+          <b>{{ token.symbol }}</b>
           } @else {
-            {{ token.symbol }}
+          {{ token.symbol }}
           }
         </h2>
-        <p *ngIf="$any(token).tokens">{{ token.priceUSD | currency : "USD" : "symbol" : "1.2-2" }}</p>
-        <p *ngIf="!$any(token).tokens">{{ $any(token).chainId }}</p>
+        <p *ngIf="$any(token).tokens">
+          {{ token.priceUSD | currency : "USD" : "symbol" : "1.2-2" }}
+        </p>
+        <img
+          *ngIf="!$any(token).tokens"
+          [src]="$any(token).chainId | chain : 'logoURI'"
+          [alt]="$any(token).chainId"
+          class="network-icon "
+        />
       </ion-label>
     </ion-col>
-    <ion-col size="auto" *ngIf="$any(token).isDepositAsCollateral === true || $any(token).isDepositAsLiquidity === true">
-      <ion-chip *ngIf="!$any(token).tokens && $any(token).isDepositAsCollateral === true " color="primary">
-        <small>
-          Collateral
-        </small>
+    <ion-col
+      size="auto"
+      *ngIf="
+        $any(token).isDepositAsCollateral === true ||
+        $any(token).isDepositAsLiquidity === true
+      "
+    >
+      <ion-chip
+        *ngIf="
+          !$any(token).tokens && $any(token).isDepositAsCollateral === true
+        "
+        color="primary"
+      >
+        <small> Collateral </small>
       </ion-chip>
-      <ion-chip *ngIf="!$any(token).tokens && $any(token).isDepositAsLiquidity === true " color="primary">
-        <small>
-          Lending
-        </small>
+      <ion-chip
+        *ngIf="!$any(token).tokens && $any(token).isDepositAsLiquidity === true"
+        color="primary"
+      >
+        <small> Lending </small>
       </ion-chip>
     </ion-col>
     <ion-col class="ion-text-end" *ngIf="$any(token)?.['24h_change']">
-      <ion-label [color]="$any(token)?.['24h_change'] >= 0 ? 'success' : 'danger'">
+      <ion-label
+        [color]="$any(token)?.['24h_change'] >= 0 ? 'success' : 'danger'"
+      >
         {{ $any(token)?.['24h_change'] | number : "1.2-2" }}%
       </ion-label>
     </ion-col>
@@ -42,12 +65,12 @@
       <ion-label>
         <h3>
           @if ($any(token).tokens) {
-            <b>{{ token.balanceUSD | currency : "USD" : "symbol" : "1.2-2" }}</b>
+          <b>{{ token.balanceUSD | currency : "USD" : "symbol" : "1.2-2" }}</b>
           } @else {
-            {{ token.balanceUSD | currency : "USD" : "symbol" : "1.2-2" }}
+          {{ token.balanceUSD | currency : "USD" : "symbol" : "1.2-2" }}
           }
         </h3>
-        <p>{{ token.balance | number : "1.2-2" }}</p>
+        <p>{{ token.balance | number : "1.2-4" }}</p>
         <p *ngIf="totalWalletWorth">
           <small>
             {{ token | totalPercent : totalWalletWorth | number : "1.2-2" }}%
@@ -57,5 +80,3 @@
     </ion-col>
   </ion-row>
 </ion-grid>
-
-      
