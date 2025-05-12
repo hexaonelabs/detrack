@@ -29,6 +29,7 @@ import {
 import { CoingeckoService } from '../coingecko/coingecko.service';
 import { SolanaWeb3Service } from '../solana-web3/solana-web3.service';
 import { arbitrum } from 'viem/chains';
+import { HyperliquidService } from '../hyperliquid/hyperliquid.service';
 
 export interface PortfolioData {
   date: string;
@@ -63,14 +64,16 @@ export class TokenService {
   constructor(
     private readonly _coinsService: CoingeckoService,
     @Inject('EVM_SERVICE') private readonly _evmService: LIFIService,
+    @Inject('HYPERLIQUID_SERVICE') private readonly _hyperliquidService: HyperliquidService,
     // private readonly _cosmosService: StargateService,
     private readonly _solanaService: SolanaWeb3Service
   ) {
     this._rawTokens$ = combineLatest([
       this._evmService.tokens$,
+      this._hyperliquidService.tokens$,
       // this._cosmosService.tokens$,
     ]).pipe(
-      mergeMap((arrays) => arrays),
+      map((arrays) => arrays.flat()),
       shareReplay(1)
     );
     this.tokens$ = combineLatest([
@@ -219,6 +222,7 @@ export class TokenService {
     ].filter((address: string) => isValidSvmAddress(address));
     await Promise.all([
       ...evm.map((address) => this._evmService.getWalletTokens(address)),
+      ...evm.map((address) => this._hyperliquidService.getWalletTokens(address)),
       // ...cosmos.map((address) => this._cosmosService.getWalletTokens(address)),
       ...svn.map((address) => this._solanaService.getWalletTokens(address)),
     ]).catch((err) => err);
@@ -286,6 +290,7 @@ export class TokenService {
 
   async clear() {
     this._evmService.clear();
+    this._hyperliquidService.clear();
     // this._cosmosService.clear();
     this._solanaService.clear();
   }

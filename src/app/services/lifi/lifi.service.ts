@@ -37,11 +37,23 @@ export interface TokenState {
   txs: any[];
 }
 
-const AVAILABLE_CHAINS = [
-  CHAINS.mainnet,
-  CHAINS.optimism,
-  CHAINS.arbitrum,
-  // CHAINS.polygon,
+export const AVAILABLE_CHAINS = [
+  {
+    ...CHAINS.mainnet,
+    chainKey: 'ethereum',
+  },
+  {
+    ...CHAINS.optimism,
+    chainKey: 'optimism',
+  },
+  {
+    ...CHAINS.arbitrum,
+    chainKey: 'arbitrum',
+  },
+  // {
+  //   ...CHAINS.polygon,
+  //   chainKey: 'polygon',
+  // },
   // CHAINS.bsc,
   // CHAINS.avalanche,
   // CHAINS.base,
@@ -63,9 +75,7 @@ const AVAILABLE_CHAINS = [
   // CHAINS.berachain,
 ];
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable()
 export class LIFIService {
   private readonly _tokens$: BehaviorSubject<TokenWithBalance[]> =
     new BehaviorSubject([] as TokenWithBalance[]);

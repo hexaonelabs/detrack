@@ -10,6 +10,7 @@ import { getFirestore, provideFirestore } from '@angular/fire/firestore';
 import { environment } from '../environments/environment';
 import { LIFIService } from './services/lifi/lifi.service';
 import { MockLIFIService } from './services/lifi/lifi.service.mock';
+import { HyperliquidService } from './services/hyperliquid/hyperliquid.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -26,6 +27,10 @@ export const appConfig: ApplicationConfig = {
       provide: 'EVM_SERVICE',
       // useClass: environment.isProd ? LIFIService : MockLIFIService,
       useClass: LIFIService,
+    },
+    {
+      provide: 'HYPERLIQUID_SERVICE',
+      useClass: HyperliquidService
     }
   ],
 };

@@ -1,5 +1,5 @@
 import { CoingeckoService } from './services/coingecko/coingecko.service';
-import { TokenState } from './services/lifi/lifi.service';
+import { AVAILABLE_CHAINS, TokenState } from './services/lifi/lifi.service';
 
 import { assets, chains } from 'chain-registry';
 import { encode as bech32Encode, decode as bech32Decode } from 'bech32';
@@ -231,10 +231,15 @@ export const addMarketDatasFromCoingecko = async (
     [...coingeckoIds.values()],
     forceRefresh
   );
+  console.log('marketData', marketData);
   const tokensMarketData: TokenMarketData[] = assets.map((asset) => {
     const assetMarketData = marketData?.find(
       (market: { symbol: string }) =>
         market.symbol.toLocaleLowerCase() === asset.symbol.toLocaleLowerCase()
+    );
+    const chain = AVAILABLE_CHAINS.find(
+      (chain) =>
+        chain.id === Number(asset.chainId)
     );
     return {
       priceUSD: assetMarketData?.current_price,
@@ -248,7 +253,7 @@ export const addMarketDatasFromCoingecko = async (
       fdv: assetMarketData?.fully_diluted_valuation,
       maxSupply: assetMarketData?.max_supply,
       totalSupply: assetMarketData?.total_supply,
-      logoURI: assetMarketData?.image,
+      logoURI: asset.logoURI || assetMarketData?.image || `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${chain?.chainKey!}/assets/${asset.address}/logo.png`,
       symbol: asset.symbol,
       coingeckoId: asset.coingeckoId || assetMarketData?.id,
     };
