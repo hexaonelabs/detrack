@@ -21,6 +21,18 @@
         <p *ngIf="!$any(token).tokens">{{ $any(token).chainId }}</p>
       </ion-label>
     </ion-col>
+    <ion-col size="auto" *ngIf="$any(token).isDepositAsCollateral === true || $any(token).isDepositAsLiquidity === true">
+      <ion-chip *ngIf="!$any(token).tokens && $any(token).isDepositAsCollateral === true " color="primary">
+        <small>
+          Collateral
+        </small>
+      </ion-chip>
+      <ion-chip *ngIf="!$any(token).tokens && $any(token).isDepositAsLiquidity === true " color="primary">
+        <small>
+          Lending
+        </small>
+      </ion-chip>
+    </ion-col>
     <ion-col class="ion-text-end" *ngIf="$any(token)?.['24h_change']">
       <ion-label [color]="$any(token)?.['24h_change'] >= 0 ? 'success' : 'danger'">
         {{ $any(token)?.['24h_change'] | number : "1.2-2" }}%

@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
-import { IonAccordion, IonAccordionGroup, IonAvatar, IonCard, IonCol, IonGrid, IonItem, IonLabel, IonNote, IonRow } from '@ionic/angular/standalone';
+import { IonAccordion, IonAccordionGroup, IonAvatar, IonBadge, IonCard, IonChip, IonCol, IonGrid, IonItem, IonLabel, IonNote, IonRow } from '@ionic/angular/standalone';
 import { GroupedTokenWithBalance, GroupedTokenWithBalanceAndMarketData, TokenWithBalance } from '../../interfaces/token';
 import { TotalPercentPipe } from '../../pipes/total-percent/total-percent.pipe';
 
@@ -15,6 +15,8 @@ const UIElements = [
   IonCard,
   IonAccordion,
   IonAccordionGroup,
+  IonChip,
+  IonBadge,
 ];
 
 @Component({
