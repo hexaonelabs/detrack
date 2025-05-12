@@ -20,6 +20,10 @@ export interface Token extends StaticToken {
 export interface TokenWithBalance extends Token {
   balance: string;
   balanceUSD: string;
+  isBorrowed?: boolean;
+  isDepositAsCollateral?: boolean;
+  isDepositAsLiquidity?: boolean;
+  isLST?: boolean;
 }
 
 export interface GroupedTokenWithBalance extends Omit<TokenWithBalance, 'address' | 'chainId' | 'decimals'> {
