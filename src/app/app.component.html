@@ -70,8 +70,22 @@
       <ion-row>
         <ion-col size="12">
           <ion-card>
-            <ion-grid *ngIf="totalWorthDetail$ | async as totalWorthDetail">
-              <ion-row>
+            <ion-grid>
+              <ion-row class="ion-padding-top">
+                <ion-col size="12">
+                  <ion-text>
+                    <h2 class="ion-no-margin ion-padding-start">
+                      Wallet Breakdown
+                    </h2>
+                  </ion-text>
+                  <ion-text color="medium">
+                    <p class="ion-no-margin ion-padding-start">
+                      <small>Wallet worth breakdown</small>
+                    </p>
+                  </ion-text>
+                </ion-col>
+              </ion-row>
+              <ion-row *ngIf="totalWorthDetail$ | async as totalWorthDetail" class="ion-padding">
                 <ion-col>
                   <ion-chip
                     style="
