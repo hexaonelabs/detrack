@@ -70,12 +70,8 @@ export class LIFIService {
   private readonly _tokens$: BehaviorSubject<TokenWithBalance[]> =
     new BehaviorSubject([] as TokenWithBalance[]);
   public readonly tokens$ = this._tokens$.asObservable().pipe(
-    // remove tokens with balance < 0
-    map((tokens) => tokens.filter((t) => Number(t.balance) > 0)),
-    // remove `aToken` and `vToken` from tokens
-    map((tokens) =>
-      tokens.filter((t) => !t.symbol.startsWith('a') && !t.symbol.endsWith('v'))
-    )
+    // remove tokens with balance <= 0
+    map((tokens) => tokens.filter((t) => Number(t.balance) > 0))
   );
   private readonly _totalTokenToCheck$ = new BehaviorSubject(0);
   public readonly isAllTokenSymbolLoaded$ = this._totalTokenToCheck$
@@ -121,21 +117,20 @@ export class LIFIService {
           );
           const tokens = parsedStoredTokens.tokens;
           this._tokens$.next([...this._tokens$.value, ...tokens]);
-          this._totalTokenToCheck$.next(
-            this._totalTokenToCheck$.value - chainTokens[chainId].length
-          );
-          continue;
         } else {
           // remove expired tokens from local storage
-          localStorage.removeItem(`tokens-${walletAddress}-${chainId}`);  
+          localStorage.removeItem(`tokens-${walletAddress}-${chainId}`);
           console.log(
             `Tokens for chainId ${chainId} loaded from local storage but expired.`
           );
         }
       } else {
-        console.log(`Loading tokens for chainId: ${chainId}...`);      
+        console.log(`Loading tokens for chainId: ${chainId}...`);
         const tokens = tokensResponse.tokens[Number(chainId)];
-        const accountTokensWithBalance = await this._getAccountTokensBalance(tokens, walletAddress);
+        const accountTokensWithBalance = await this._getAccountTokensBalance(
+          tokens,
+          walletAddress
+        );
         // save tokens into local storage
         try {
           localStorage.setItem(
@@ -149,7 +144,13 @@ export class LIFIService {
           console.error(error);
         }
       }
-      console.log(`✅ Tokens loaded for chainId: ${chainId}. Rest : ${this._totalTokenToCheck$.value} tokens to check`);
+      // decrease totalTokenToCheck
+      this._totalTokenToCheck$.next(
+        this._totalTokenToCheck$.value - chainTokens[chainId].length
+      );
+      console.log(
+        `✅ Tokens loaded for chainId: ${chainId}. Rest : ${this._totalTokenToCheck$.value} tokens to check`
+      );
     }
   }
 
@@ -257,10 +258,6 @@ export class LIFIService {
       });
     } catch (error) {
       console.error('Error during multicall:', error);
-      // Decrease totalTokenToCheck for all tokens in case of failure
-      this._totalTokenToCheck$.next(
-        this._totalTokenToCheck$.value - erc20Tokens.length
-      );
     }
     // formating tokens
     const updatedTokens = results.map((result, index) => {
@@ -280,8 +277,7 @@ export class LIFIService {
         ).toString(),
       };
 
-      return Number(tokenBalance.balance) > 0 &&
-        tokenBalance.balanceUSD !== '0'
+      return Number(tokenBalance.balance) > 0 && tokenBalance.balanceUSD !== '0'
         ? tokenBalance
         : null;
     });
@@ -297,24 +293,15 @@ export class LIFIService {
         ...zeroToken,
         chainId: String(zeroToken.chainId),
         balance,
-        balanceUSD: (
-          Number(balance) * Number(zeroToken.priceUSD)
-        ).toString(),
+        balanceUSD: (Number(balance) * Number(zeroToken.priceUSD)).toString(),
       };
       updatedTokens.push(zeroTokenBalance);
     }
-    // Filter out null values and update the BehaviorSubject
-    const validTokens = updatedTokens.filter(
-      (token) => token !== null
-    ) as TokenWithBalance[];
+    // Filter out null values & remove `aToken` and update the BehaviorSubject
+    const validTokens = updatedTokens
+      .filter((token) => token !== null)
+      .filter((t) => !t.symbol.startsWith('a')) as TokenWithBalance[];
     this._tokens$.next([...this._tokens$.value, ...validTokens]);
-    // Update the totalTokenToCheck counter
-    this._totalTokenToCheck$.next(
-      this._totalTokenToCheck$.value - erc20Tokens.length
-    );
-    if (zeroToken) {
-      this._totalTokenToCheck$.next(this._totalTokenToCheck$.value - 1);
-    }
     return validTokens;
   }
 
@@ -382,9 +369,38 @@ export class LIFIService {
         userEmodeCategoryId: userReserves.userEmodeCategoryId,
       });
       // add to user summaries
-      // add to user summaries
       userSummaries.set(chain.id, { ...userSummary });
     }
+    // get all tokens added as liquidity from userSummary
+    const userTokensAsLiquidity: TokenWithBalance[] = [];
+    for (const [chainId, userSummary] of userSummaries.entries()) {
+      const tokens = userSummary.userReservesData
+        .map((reserve) => {
+          const token = {
+            address: reserve.reserve.aTokenAddress,
+            symbol: reserve.reserve.symbol,
+            chainId: String(chainId),
+            balance: reserve.underlyingBalance,
+            balanceUSD: reserve.underlyingBalanceUSD,
+            priceUSD: reserve.reserve.priceInUSD,
+            name: reserve.reserve.name,
+            decimals: reserve.reserve.decimals,
+            isDepositAsCollateral: reserve.usageAsCollateralEnabledOnUser && reserve.underlyingBalance !== '0',
+            isDepositAsLiquidity: !reserve.usageAsCollateralEnabledOnUser && reserve.underlyingBalance !== '0',
+            isBorrowed: reserve.totalBorrowsUSD !== '0'
+          };
+          return token;
+        })
+        .filter((token) => token.balance !== '0' && token.balanceUSD !== '0');
+      userTokensAsLiquidity.push(...tokens);
+    }
+    // add to tokens$
+    console.log('userTokensAsLiquidity', userTokensAsLiquidity);
+    const currentTokens = this._tokens$.value;
+    this._tokens$.next([
+      ...currentTokens,
+      ...userTokensAsLiquidity
+    ]);
     return userSummaries;
   }
 }
