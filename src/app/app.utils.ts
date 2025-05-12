@@ -231,7 +231,7 @@ export const addMarketDatasFromCoingecko = async (
     [...coingeckoIds.values()],
     forceRefresh
   );
-  console.log('marketData', marketData);
+  // console.log('marketData', marketData);
   const tokensMarketData: TokenMarketData[] = assets.map((asset) => {
     const assetMarketData = marketData?.find(
       (market: { symbol: string }) =>
@@ -253,7 +253,9 @@ export const addMarketDatasFromCoingecko = async (
       fdv: assetMarketData?.fully_diluted_valuation,
       maxSupply: assetMarketData?.max_supply,
       totalSupply: assetMarketData?.total_supply,
-      logoURI: asset.logoURI || assetMarketData?.image || `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${chain?.chainKey!}/assets/${asset.address}/logo.png`,
+      logoURI: (asset.logoURI || '')?.length > 0 
+        ? asset.logoURI 
+        : assetMarketData?.image || `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${chain?.chainKey!}/assets/${asset.address}/logo.png`,
       symbol: asset.symbol,
       coingeckoId: asset.coingeckoId || assetMarketData?.id,
     };

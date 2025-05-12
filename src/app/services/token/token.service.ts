@@ -86,7 +86,7 @@ export class TokenService {
         const groupedTokens = tokens.reduce((acc, asset) => {
           // check existing asset symbol
           const symbol = asset.symbol;
-          const index = acc.findIndex((a) => a.symbol === symbol);
+          const index = acc.findIndex((a) => a.symbol.toLowerCase() === symbol.toLowerCase());
           if (index !== -1) {
             acc[index]?.tokens?.push(asset);
             const isStrideLiquidToken =
@@ -139,6 +139,8 @@ export class TokenService {
               token.priceUSD = tokenPriceUSD.toString();
             }
             token.balanceUSD = (tokenPriceUSD * tokenBalance).toString();
+            token.logoURI = tokenMarketData?.logoURI || token.logoURI;
+            token.coingeckoId = tokenMarketData?.coingeckoId || token.coingeckoId;
           });
           // add & upfdate all data of main Token
           const tokenMarketData = marketData?.find((m) =>
@@ -237,8 +239,6 @@ export class TokenService {
     }
     // get AAVE pool user reserve balance
     const result = await this._evmService.loadUserSummary({ account: evm[0] });
-    console.log('>>>>>', result);
-
     const { totalCollateralUSD, totalBorrowsUSD, totalLiquidityUSD } = [
       ...result.values(),
     ].reduce(
@@ -262,11 +262,9 @@ export class TokenService {
     const isAllTokenSymbolLoaded = await firstValueFrom(
       combineLatest([
         this._evmService.isAllTokenSymbolLoaded$,
+        this._hyperliquidService.isAllTokenSymbolLoaded$,
         // this._cosmosService.isAllTokenSymbolLoaded$,
       ]).pipe(
-        tap((loadings) => {
-          console.log('isAllTokenSymbolLoaded', loadings);
-        }),
         map((loadings) => loadings.every((loading) => loading))
       )
     );
@@ -276,7 +274,6 @@ export class TokenService {
       return;
     }
     const tokens = await firstValueFrom(this.tokens$);
-    console.log('getTokensMarketData', tokens);
     const tokensWithTotalQuantity = tokens
       .flatMap((token) => token.tokens || [])
       .filter((token) => Number(token.balance) > 0);
@@ -284,7 +281,6 @@ export class TokenService {
       this._coinsService,
       tokensWithTotalQuantity
     );
-    console.log('marketData loaded', marketData);
     this._marketData$.next(marketData);
   }
 
@@ -332,7 +328,6 @@ export class TokenService {
       }),
       map((coinsData) => {
         const aggregatedData: { [date: string]: number } = {};
-        console.log('getPortfolioHistory coinsData', coinsData);
         coinsData.forEach((coinData) => {
           coinData.forEach(({ date, value }) => {
             if (aggregatedData[date]) {

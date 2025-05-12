@@ -39,21 +39,56 @@ export class HyperliquidService {
   }
 
   async getWalletTokens(walletAddress: `0x${string}`): Promise<void> {
-    const tokens = await this._getEVMTokens();
-    this._totalTokenToCheck$.next(tokens.length);
-    const tokensWithBalance = await this._getAccountTokensBalance(
-      tokens,
-      walletAddress
+    // check in storage for tokens stored 15 minutes ago
+    const storedTokens = localStorage.getItem(
+      `tokens-${walletAddress}-${this._chain.id}`
     );
-    // get CORE balance
-    const coreTokens = await this._getCOREBalance(walletAddress);
-    console.log('CORE tokens:', coreTokens);
-    this._tokens$.next([...tokensWithBalance, ...coreTokens]);
-    this._totalTokenToCheck$.next(0);
+
+    if (storedTokens) {
+      const parsedStoredTokens = JSON.parse(storedTokens);
+      const storedDate = new Date(parsedStoredTokens.date);
+      const currentDate = new Date();
+      const diff = Math.abs(currentDate.getTime() - storedDate.getTime());
+      const diffMinutes = Math.floor(diff / (1000 * 60));
+      if (diffMinutes < 15) {
+        console.log(
+          `Tokens for chainId ${this._chain.id} loaded from local storage.`
+        );
+        const tokens = parsedStoredTokens.tokens;
+        this._tokens$.next([...this._tokens$.value, ...tokens]);
+      } else {
+        // remove expired tokens from local storage
+        localStorage.removeItem(`tokens-${walletAddress}-${this._chain.id}`);
+        console.log(
+          `Tokens for chainId ${this._chain.id} loaded from local storage but expired.`
+        );
+      }
+    } else {
+      // get CORE balance
+      const coreTokens = await this._getCOREBalance(walletAddress);
+      // get EVM balance
+      const tokens = await this._getEVMTokens();
+      this._totalTokenToCheck$.next(tokens.length);
+      const tokensWithBalance = await this._getAccountTokensBalance(
+        tokens,
+        walletAddress
+      );
+      const allTokens = [...tokensWithBalance, ...coreTokens];
+      // store tokens in local storage
+      localStorage.setItem(
+        `tokens-${walletAddress}-${this._chain.id}`,
+        JSON.stringify({
+          date: new Date(),
+          tokens: allTokens,
+        })
+      );
+      // update state
+      this._tokens$.next(allTokens);
+      this._totalTokenToCheck$.next(0);
+    }
   }
 
   private async _getEVMTokens() {
-    // fetch from ? https://raw.githubusercontent.com/HyperSwapX/hyperswap-token-list/refs/heads/main/tokens.json`
     const response = await firstValueFrom(
       this.http.get<{
         tokens: {
@@ -87,7 +122,6 @@ export class HyperliquidService {
         symbol: 'HYPE',
         address: zeroAddress,
         chainId: this._chain.id.toString(),
-        logoURI: 'https://raw.githubusercontent.com/HyperSwapX/hyperswap-token-list/refs/heads/main/tokens/hype.png',
         priceUSD: '-1',
       }
     ];
@@ -131,7 +165,7 @@ export class HyperliquidService {
         decimals:  18 ,
         priceUSD: '-1',
         balance: token.total,
-        balanceUSD: token.total,
+        balanceUSD: '-1',
       };
     });
     return preFormatedTokens;
